@@ -1,0 +1,64 @@
+*rustbucket.txt*	TODO
+
+==============================================================================
+CONTENTS                                        *rustbucket*   *rustbucket-contents*
+
+    Installation................................: |rustbucket-installation|
+    Usage.......................................: |rustbucket-usage|
+    Settings....................................: |rustbucket-settings|
+    Internals...................................: |rustbucket-internals|
+    Issues......................................: |rustbucket-issues|
+
+
+==============================================================================
+INSTALLATION                                            *rustbucket-installation*
+
+The easiest way to install the plugin is with a plugin manager:
+
+- vim-plug: https://github.com/junegunn/vim-plug
+- Vundle:   https://github.com/VundleVim/Vundle.vim
+
+If you use one, just follow the instructions in its documentation.
+
+You can install the plugin yourself using Vim's |packages| functionality by
+cloning the project (or adding it as a submodule) under
+`~/.vim/pack/<any-name>/start/`. For example:
+>
+    git clone https://github.com/AndrewRadev/rustbucket.vim ~/.vim/pack/_/start/rustbucket
+<
+This should automatically load the plugin for you on Vim start. Alternatively,
+you can add it to `~/.vim/pack/<any-name>/opt/` instead and load it in your
+.vimrc manually with:
+>
+    packadd rustbucket
+<
+If you'd rather not use git, you can download the files from the "releases"
+tab and unzip them in the relevant directory:
+https://github.com/AndrewRadev/rustbucket.vim/releases.
+
+
+==============================================================================
+USAGE                                                          *rustbucket-usage*
+
+TODO
+
+
+==============================================================================
+SETTINGS                                                    *rustbucket-settings*
+
+TODO
+
+
+==============================================================================
+INTERNALS                                                  *rustbucket-internals*
+
+TODO
+
+==============================================================================
+ISSUES                                                        *rustbucket-issues*
+
+Any issues and suggestions are very welcome on the github bugtracker:
+https://github.com/AndrewRadev/rustbucket.vim/issues
+
+
+vim:tw=78:sw=4:ft=help:norl:
