@@ -112,17 +112,6 @@ function! s:ParsePackageVersion(package)
   return join(version_breakdowns[0], '.')
 endfunction
 
-" TODO (2021-02-08) Additional processing -- [identifier, full_identifier, type]?
-function! rustbucket#GetRustIdentifier()
-  try
-    let saved_iskeyword = &l:iskeyword
-    setlocal iskeyword+=:,!
-    return expand('<cword>')
-  finally
-    let &l:iskeyword = saved_iskeyword
-  endtry
-endfunction
-
 " TODO (2021-02-08) Write down version, link to source
 let s:std_prelude = {
       \ 'Copy':                'std::marker::Copy',
