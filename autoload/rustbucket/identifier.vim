@@ -10,7 +10,12 @@ function! rustbucket#identifier#New(data) abort
         \ 'full_path': get(a:data, 'full_path', ''),
         \ 'type':      get(a:data, 'type', ''),
         \
-        \ 'Type': function('rustbucket#identifier#Type'),
+        \ 'real_path': '',
+        \
+        \ 'IsBlank':            function('rustbucket#identifier#IsBlank'),
+        \ 'RealPath':           function('rustbucket#identifier#RealPath'),
+        \ 'Type':               function('rustbucket#identifier#Type'),
+        \ 'PackageWithVersion': function('rustbucket#identifier#PackageWithVersion'),
         \ }
 endfunction
 
@@ -32,7 +37,7 @@ function! rustbucket#identifier#AtCursor() abort
   endif
 
   if symbol[len(symbol) - 1] == '!'
-    let symbol = symbol[0 : len(identifier) - 1]
+    let symbol = symbol[0 : len(symbol) - 2]
     let identifier_type = 'macro'
   endif
 
@@ -71,6 +76,10 @@ function! rustbucket#identifier#AtCursor() abort
   finally
     call winrestview(saved_view)
   endtry
+endfunction
+
+function! rustbucket#identifier#IsBlank() dict abort
+  return self.symbol == ''
 endfunction
 
 function! rustbucket#identifier#RealPath() dict abort
@@ -138,4 +147,44 @@ function! rustbucket#identifier#Type() dict abort
   endif
 
   return self.type
+endfunction
+
+function! rustbucket#identifier#PackageWithVersion() dict abort
+  let real_path = self.RealPath()
+  if real_path == ''
+    return ['', '']
+  endif
+
+  let package = split(real_path, '::')[0]
+  if package == 'std'
+    return ['std', '']
+  elseif package == 'crate'
+    " TODO (2021-02-12) Parse crate name + version
+    return ['crate', '']
+  endif
+
+  return [package, s:ParsePackageVersion(package)]
+endfunction
+
+function! s:ParsePackageVersion(package)
+  let lockfile = findfile('Cargo.lock', '.;')
+  if lockfile == ''
+    return ''
+  endif
+
+  let package_data = systemlist("grep -A1 'name = \"".a:package."\"' ".lockfile)
+  if len(package_data) == 0
+    return ''
+  endif
+
+  let version_breakdowns = []
+  for i in range(1, len(package_data), 2)
+    let package_version = matchstr(package_data[i], 'version = "\zs\d\+\.\d\+\.\d\+\ze"')
+    let version_breakdown = map(split(package_version, '\.'), 'str2nr(v:val)')
+    call add(version_breakdowns, version_breakdown)
+  endfor
+
+  call sort(version_breakdowns)
+
+  return join(version_breakdowns[0], '.')
 endfunction

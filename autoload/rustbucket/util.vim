@@ -77,3 +77,30 @@ endfunction
 function! rustbucket#util#GetCols(start, end)
   return strpart(getline('.'), a:start - 1, a:end - a:start + 1)
 endfunction
+
+" External programs {{{1
+"
+" Interacting with external programs -- so far, just the act of opening a URL
+" with the default browser.
+"
+" function! rustbucket#util#Open(url) {{{2
+"
+function! rustbucket#util#Open(url)
+  let url = shellescape(a:url)
+
+  if has('mac')
+    silent call system('open '.url)
+  elseif has('unix')
+    if executable('xdg-open')
+      silent call system('xdg-open '.url.' 2>&1 > /dev/null &')
+    else
+      echoerr 'You need to install xdg-open to be able to open urls'
+      return
+    end
+  elseif has('win32') || has('win64')
+    silent exe "! start ".a:url
+  else
+    echoerr 'Don''t know how to open a URL on this system'
+    return
+  end
+endfunction

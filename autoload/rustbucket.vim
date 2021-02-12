@@ -1,59 +1,65 @@
-" TODO (2021-02-08) Open() function expected -- need a local one
+" TODO (2021-02-12) import anyhow::anyhow, but then anyhow::Result?
+" TODO (2021-02-12) Separate Doc() and DocUrl() functions
 
 function! rustbucket#Doc() abort
   " TODO (2021-01-31) WebContext::get_default() -> func call, not namespace.
   " Read bracket?
 
-  let term = rustbucket#GetRustIdentifier()
-
-  if term[len(term) - 1] == '!'
-    let is_macro = 1
-    let term = term[0:(len(term) - 2)]
-  else
-    let is_macro = 0
+  let identifier = rustbucket#identifier#AtCursor()
+  let real_path = identifier.RealPath()
+  if real_path == ''
+    echomsg "Can't figure out the real path of: ".real_path
+    return
   endif
 
-  let [imported_symbols, aliases] = rustbucket#ParseImports()
-  let term_head = split(term, '::')[0]
+  let term_path = split(real_path, '::')
 
-  if has_key(imported_symbols, term_head)
-    let term = imported_symbols[term_head] . '::' . term
-  elseif has_key(aliases, term_head)
-    let term = aliases[term_head] . '::' . term
-  elseif has_key(s:std_prelude, term_head)
-    let term = s:std_prelude[term_head] . '::' . term
-  endif
+  let package   = term_path[0]
+  let term_name = term_path[-1]
+  let path      = join(term_path[0:-2], '/')
 
-  let term_path = split(term, '::')
-
-  if term_path[0] == 'std'
-    call Open('https://doc.rust-lang.org/std/?search='.term)
+  if package == 'std'
+    let base_url = 'https://doc.rust-lang.org/'.path
   elseif term_path[0] == 'crate'
     echomsg "Local documentation not supported yet: ".term
     return
   else
-    let package = term_path[0]
-    let term_name = term_path[-1]
-    let path = join(term_path[0:-2], '/')
-
     let package_version = s:ParsePackageVersion(package)
     if package_version == ''
       let package_version = 'latest'
     endif
 
-    let url = 'https://docs.rs/'.package.'/'.package_version.'/'.path
-
-    if is_macro
-      let url .= '/macro.'.term_name.'.html'
-    else
-      let url .= '/?search='.term_name
-    endif
-
-    let url = substitute(url, '//', '/', 'g')
-
-    call Open(url)
-    return
+    let base_url = 'https://docs.rs/'.package.'/'.package_version.'/'.path
   endif
+
+  let type = identifier.Type()
+
+  if type =~ '^\(macro\|struct\|enum\|fn\)$'
+    let url = base_url . '/' . type . '.' . term_name . '.html'
+  else
+    let url = base_url . '/?search=' . term_name
+  endif
+
+  let url = substitute(url, '//', '/', 'g')
+
+  echomsg "Opening: ".url
+  call rustbucket#util#Open(url)
+endfunction
+
+function! rustbucket#Info() abort
+  let identifier = rustbucket#identifier#AtCursor()
+
+  if identifier.IsBlank()
+    let lines = ["No info for identifier under cursor"]
+  else
+    let lines = [
+          \ "Real path: " . identifier.RealPath(),
+          \ "Type:      " . identifier.Type(),
+          \ "Package:   " . join(identifier.PackageWithVersion(), ' ')
+          \ ]
+  endif
+
+  call popup_atcursor(lines, {'border': []})
 endfunction
 
 function! rustbucket#ParseImports()
@@ -87,29 +93,6 @@ function! rustbucket#ParseImports()
   endfor
 
   return [imported_symbols, aliases]
-endfunction
-
-function! s:ParsePackageVersion(package)
-  let lockfile = findfile('Cargo.lock', '.;')
-  if lockfile == ''
-    return ''
-  endif
-
-  let package_data = systemlist("grep -A1 'name = \"".a:package."\"' ".lockfile)
-  if len(package_data) == 0
-    return ''
-  endif
-
-  let version_breakdowns = []
-  for i in range(1, len(package_data), 2)
-    let package_version = matchstr(package_data[i], 'version = "\zs\d\+\.\d\+\.\d\+\ze"')
-    let version_breakdown = map(split(package_version, '\.'), 'str2nr(v:val)')
-    call add(version_breakdowns, version_breakdown)
-  endfor
-
-  call sort(version_breakdowns)
-
-  return join(version_breakdowns[0], '.')
 endfunction
 
 " TODO (2021-02-08) Write down version, link to source
