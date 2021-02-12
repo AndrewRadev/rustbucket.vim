@@ -1,8 +1,23 @@
-function! rustbucket#identifier#AtCursor()
+" Data includes:
+"
+" - symbol:    The specific identifier under the cursor
+" - type:      fn|macro|struct|enum|...
+" - full_path: The fully namespaced identifier
+"
+function! rustbucket#identifier#New(data) abort
+  return {
+        \ 'symbol':    get(a:data, 'symbol', ''),
+        \ 'full_path': get(a:data, 'full_path', ''),
+        \ 'type':      get(a:data, 'type', ''),
+        \
+        \ 'Type': function('rustbucket#identifier#Type'),
+        \ }
+endfunction
+
+function! rustbucket#identifier#AtCursor() abort
   let namespace_pattern  = '\k\+\%(\.\|::\)'
   let identifier_pattern = '\k\+!\='
   let identifier_type    = ''
-  let blank_identifier   = { 'symbol': '', 'type': '', 'full_path': '' }
 
   try
     let saved_iskeyword = &l:iskeyword
@@ -13,7 +28,7 @@ function! rustbucket#identifier#AtCursor()
   endtry
 
   if len(symbol) == 0
-    return blank_identifier
+    return rustbucket#identifier#New({})
   endif
 
   if symbol[len(symbol) - 1] == '!'
@@ -48,12 +63,79 @@ function! rustbucket#identifier#AtCursor()
       let namespace = ''
     endif
 
-    return {
+    return rustbucket#identifier#New({
           \ 'symbol':    symbol,
-          \ 'full_path': b:imports.FullPath(namespace . symbol),
+          \ 'full_path': namespace . symbol,
           \ 'type':      identifier_type,
-          \ }
+          \ })
   finally
     call winrestview(saved_view)
   endtry
+endfunction
+
+function! rustbucket#identifier#RealPath() dict abort
+  if self.real_path != ''
+    return self.real_path
+  endif
+
+  if self.full_path != ''
+    let self.real_path = b:imports.Resolve(self.full_path)
+  elseif self.symbol != ''
+    let self.real_path = b:imports.Resolve(self.symbol)
+  endif
+
+  return self.real_path
+endfunction
+
+function! rustbucket#identifier#Type() dict abort
+  if self.type != ''
+    return self.type
+  endif
+
+  if self.symbol == ''
+    return ''
+  endif
+
+  let best_tag = {}
+  let taglist = taglist(self.symbol)
+
+  " First, look for a tag that matches by full path:
+  for tag in taglist
+    " Check if we have some namespacing info in the tag:
+    let tag_full_path = ''
+    if has_key(tag, 'module')
+      let tag_full_path = tag.module . '::' . tag.name
+    elseif has_key(tag, 'implementation')
+      let tag_full_path = tag.implementation . '::' . tag.name
+    endif
+
+    if self.full_path != '' && tag_full_path != '' && self.full_path =~ tag_full_path.'$'
+      " The identifier's full path ends with the tag's full path, this should
+      " be the best we can hope for:
+      let best_tag = tag
+      break
+    endif
+  endfor
+
+  " Try looking for a tag that has a "kind" we know about:
+  if empty(best_tag)
+    for tag in taglist
+      if get(tag, 'kind', '') =~ '^[sgP]$'
+        let best_tag = tag
+        break
+      endif
+    endfor
+  endif
+
+  if !empty(best_tag) && has_key(best_tag, 'kind')
+    if best_tag.kind == 's'
+      let self.type = 'struct'
+    elseif best_tag.kind == 'g'
+      let self.type = 'enum'
+    elseif best_tag.kind == 'P'
+      let self.type = 'fn'
+    endif
+  endif
+
+  return self.type
 endfunction

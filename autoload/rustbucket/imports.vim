@@ -3,11 +3,11 @@ function! rustbucket#imports#Init()
         \ 'import_lookup': {},
         \
         \ 'Parse':    function('rustbucket#imports#Parse'),
-        \ 'FullPath': function('rustbucket#imports#FullPath'),
+        \ 'Resolve': function('rustbucket#imports#Resolve'),
         \ }
 endfunction
 
-function! rustbucket#imports#FullPath(symbol) dict abort
+function! rustbucket#imports#Resolve(symbol) dict abort
   " TODO (2021-02-09) Only parse when changedtick changes
   call self.Parse()
 
