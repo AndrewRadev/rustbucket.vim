@@ -24,7 +24,7 @@ function! rustbucket#Doc() abort
     echomsg "Local documentation not supported yet: ".term
     return
   else
-    let package_version = s:ParsePackageVersion(package)
+    let [_, package_version] = identifier.PackageWithVersion()
     if package_version == ''
       let package_version = 'latest'
     endif
