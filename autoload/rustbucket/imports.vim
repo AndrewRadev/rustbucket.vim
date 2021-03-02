@@ -12,7 +12,7 @@ function! rustbucket#imports#Resolve(symbol) dict abort
   call self.Parse()
 
   let [head; rest] = split(a:symbol, '::')
-  let full_head = get(self.import_lookup, head, '')
+  let full_head = get(self.import_lookup, head, head)
   let full_path = extend([full_head], rest)
 
   return join(full_path, '::')
