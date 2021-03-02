@@ -10,6 +10,8 @@ function! rustbucket#identifier#New(data) abort
         \ 'full_path': get(a:data, 'full_path', ''),
         \ 'type':      get(a:data, 'type', ''),
         \
+        \ 'package':   '',
+        \ 'version':   '',
         \ 'real_path': '',
         \
         \ 'IsBlank':            function('rustbucket#identifier#IsBlank'),
@@ -150,23 +152,30 @@ function! rustbucket#identifier#Type() dict abort
 endfunction
 
 function! rustbucket#identifier#PackageWithVersion() dict abort
+  if self.package != '' && self.version != ''
+    return [self.package, self.version]
+  endif
+
   let real_path = self.RealPath()
   if real_path == ''
     return ['', '']
   endif
 
-  let package = split(real_path, '::')[0]
-  if package == 'std'
+  let self.package = split(real_path, '::')[0]
+
+  if self.package == 'std'
     return ['std', '']
-  elseif package == 'crate'
+  elseif self.package == 'crate'
     " TODO (2021-02-12) Parse crate name + version
     return ['crate', '']
   endif
 
-  return [package, s:ParsePackageVersion(package)]
+  let self.version = s:FindPackageVersion(self.package)
+
+  return [self.package, self.version]
 endfunction
 
-function! s:ParsePackageVersion(package)
+function! s:FindPackageVersion(package)
   let lockfile = findfile('Cargo.lock', '.;')
   if lockfile == ''
     return ''
