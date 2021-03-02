@@ -22,7 +22,7 @@ function! rustbucket#identifier#New(data) abort
 endfunction
 
 function! rustbucket#identifier#AtCursor() abort
-  let namespace_pattern  = '\k\+\%(\.\|::\)'
+  let namespace_pattern  = '\k\+::'
   let identifier_pattern = '\k\+!\='
   let identifier_type    = ''
 
@@ -108,7 +108,7 @@ function! rustbucket#identifier#Type() dict abort
   endif
 
   let best_tag = {}
-  let taglist = taglist(self.symbol)
+  let taglist = taglist('^'.self.symbol.'$')
 
   " First, look for a tag that matches by full path:
   for tag in taglist
@@ -120,6 +120,17 @@ function! rustbucket#identifier#Type() dict abort
       let tag_full_path = tag.implementation . '::' . tag.name
     endif
 
+    " Can we pull out any useful information out of the filename?
+    let file_info = s:GetTagFileInfo(get(tag, 'filename', ''))
+    if !empty(file_info)
+      let [package_name, package_version] = self.PackageWithVersion()
+
+      if package_name != file_info.package || package_version != file_info.version
+        " Then this is not the tag we're looking for
+        continue
+      endif
+    endif
+
     if self.full_path != '' && tag_full_path != '' && self.full_path =~ tag_full_path.'$'
       " The identifier's full path ends with the tag's full path, this should
       " be the best we can hope for:
@@ -128,15 +139,17 @@ function! rustbucket#identifier#Type() dict abort
     endif
   endfor
 
+  " TODO (2021-03-02) Does the lack of this check break anything?
+  "
   " Try looking for a tag that has a "kind" we know about:
-  if empty(best_tag)
-    for tag in taglist
-      if get(tag, 'kind', '') =~ '^[sgP]$'
-        let best_tag = tag
-        break
-      endif
-    endfor
-  endif
+  " if empty(best_tag)
+  "   for tag in taglist
+  "     if get(tag, 'kind', '') =~ '^[sgP]$'
+  "       let best_tag = tag
+  "       break
+  "     endif
+  "   endfor
+  " endif
 
   if !empty(best_tag) && has_key(best_tag, 'kind')
     if best_tag.kind == 's'
@@ -188,6 +201,7 @@ function! s:FindPackageVersion(package)
 
   let version_breakdowns = []
   for i in range(1, len(package_data), 2)
+    " TODO (2021-03-02) Handle "1.2.3-beta.2" and such
     let package_version = matchstr(package_data[i], 'version = "\zs\d\+\.\d\+\.\d\+\ze"')
     let version_breakdown = map(split(package_version, '\.'), 'str2nr(v:val)')
     call add(version_breakdowns, version_breakdown)
@@ -196,4 +210,19 @@ function! s:FindPackageVersion(package)
   call sort(version_breakdowns)
 
   return join(version_breakdowns[0], '.')
+endfunction
+
+" TODO (2021-03-02) Handle "1.2.3-beta.2" and such
+function! s:GetTagFileInfo(filename) abort
+  let filename = a:filename
+
+  if a:filename !~ '\.cargo/registry/src/'
+    return {}
+  endif
+
+  let package_with_version = matchstr(filename, '\.cargo/registry/src/[^/]\+/\zs[^/]\+\ze/')
+  let package_part = matchstr(package_with_version, '.*\ze-\d\.\d\.\d')
+  let version_part = matchstr(package_with_version, '.*-\zs\d\.\d\.\d')
+
+  return { 'package': package_part, 'version': version_part }
 endfunction
