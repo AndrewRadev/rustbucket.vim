@@ -10,14 +10,18 @@ function! rustbucket#identifier#New(data) abort
         \ 'full_path': get(a:data, 'full_path', ''),
         \ 'type':      get(a:data, 'type', ''),
         \
-        \ 'package':   '',
-        \ 'version':   '',
-        \ 'real_path': '',
+        \ 'package':         '',
+        \ 'package_version': '',
+        \ 'real_path':       '',
+        \ 'tag':             {},
         \
-        \ 'IsBlank':            function('rustbucket#identifier#IsBlank'),
-        \ 'RealPath':           function('rustbucket#identifier#RealPath'),
-        \ 'Type':               function('rustbucket#identifier#Type'),
-        \ 'PackageWithVersion': function('rustbucket#identifier#PackageWithVersion'),
+        \ 'IsBlank':          function('rustbucket#identifier#IsBlank'),
+        \ 'RealPath':         function('rustbucket#identifier#RealPath'),
+        \ 'Tag':              function('rustbucket#identifier#Tag'),
+        \ 'Type':             function('rustbucket#identifier#Type'),
+        \ 'Package':          function('rustbucket#identifier#Package'),
+        \ 'PackageFromCargo': function('rustbucket#identifier#PackageFromCargo'),
+        \ 'PackageFromTags':  function('rustbucket#identifier#PackageFromTags'),
         \ }
 endfunction
 
@@ -48,7 +52,7 @@ function! rustbucket#identifier#AtCursor() abort
 
     let search_result = search('\V'.symbol, 'Wbc', line('.'))
     if search_result <= 0
-      return ''
+      return {}
     endif
 
     let symbol_start_col    = col('.')
@@ -107,7 +111,24 @@ function! rustbucket#identifier#Type() dict abort
     return ''
   endif
 
+  let best_tag = self.Tag()
+
+  if !empty(best_tag) && has_key(best_tag, 'kind')
+    if best_tag.kind == 's'
+      let self.type = 'struct'
+    elseif best_tag.kind == 'g'
+      let self.type = 'enum'
+    elseif best_tag.kind == 'P'
+      let self.type = 'fn'
+    endif
+  endif
+
+  return self.type
+endfunction
+
+function! rustbucket#identifier#Tag() dict abort
   let best_tag = {}
+  let good_tags = []
   let taglist = taglist('^'.self.symbol.'$')
 
   " First, look for a tag that matches by full path:
@@ -123,9 +144,10 @@ function! rustbucket#identifier#Type() dict abort
     " Can we pull out any useful information out of the filename?
     let file_info = s:GetTagFileInfo(get(tag, 'filename', ''))
     if !empty(file_info)
-      let [package_name, package_version] = self.PackageWithVersion()
+      let [package_name, package_version] = self.PackageFromCargo()
 
-      if package_name != file_info.package || package_version != file_info.version
+      if package_version != '' &&
+            \ (package_name != file_info.package || package_version != file_info.version)
         " Then this is not the tag we're looking for
         continue
       endif
@@ -137,36 +159,48 @@ function! rustbucket#identifier#Type() dict abort
       let best_tag = tag
       break
     endif
+
+    " If we're here, it's good enough
+    call add(good_tags, tag)
   endfor
 
-  " TODO (2021-03-02) Does the lack of this check break anything?
-  "
-  " Try looking for a tag that has a "kind" we know about:
-  " if empty(best_tag)
-  "   for tag in taglist
-  "     if get(tag, 'kind', '') =~ '^[sgP]$'
-  "       let best_tag = tag
-  "       break
-  "     endif
-  "   endfor
-  " endif
-
-  if !empty(best_tag) && has_key(best_tag, 'kind')
-    if best_tag.kind == 's'
-      let self.type = 'struct'
-    elseif best_tag.kind == 'g'
-      let self.type = 'enum'
-    elseif best_tag.kind == 'P'
-      let self.type = 'fn'
-    endif
+  if empty(best_tag)
+    " Try to find one with a known kind:
+    for tag in good_tags
+      if tag.kind =~ '^[sgP]$'
+        let best_tag = tag
+        break
+      endif
+    endfor
   endif
 
-  return self.type
+  if empty(best_tag)
+    let best_tag = get(good_tags, 0, {})
+  endif
+
+  if !empty(best_tag)
+    let self.tag = best_tag
+  endif
+
+  return self.tag
 endfunction
 
-function! rustbucket#identifier#PackageWithVersion() dict abort
-  if self.package != '' && self.version != ''
-    return [self.package, self.version]
+function! rustbucket#identifier#Package() dict abort
+  if self.package != '' && self.package_version != ''
+    return [self.package, self.package_version]
+  endif
+
+  let [package, package_version] = self.PackageFromCargo()
+  if package_version == ''
+    let [package, package_version] = self.PackageFromTags()
+  endif
+
+  return [package, package_version]
+endfunction
+
+function! rustbucket#identifier#PackageFromCargo() dict abort
+  if self.package != '' && self.package_version != ''
+    return [self.package, self.package_version]
   endif
 
   let real_path = self.RealPath()
@@ -183,9 +217,18 @@ function! rustbucket#identifier#PackageWithVersion() dict abort
     return ['crate', '']
   endif
 
-  let self.version = s:FindPackageVersion(self.package)
+  let self.package_version = s:FindPackageVersion(self.package)
+  if self.package_version == ''
+    " We haven't found a good package then, let's leave it to tags
+    let self.package = ''
+  endif
 
-  return [self.package, self.version]
+  return [self.package, self.package_version]
+endfunction
+
+function! rustbucket#identifier#PackageFromTags() dict abort
+  let file_info = s:GetTagFileInfo(get(self.Tag(), 'filename', ''))
+  return [get(file_info, 'package', ''), get(file_info, 'version', '')]
 endfunction
 
 function! s:FindPackageVersion(package)

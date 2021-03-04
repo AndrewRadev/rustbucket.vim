@@ -13,28 +13,28 @@ describe "Identifiers" do
   end
 
   specify "resolving a basic symbol using tags" do
-    set_file_contents <<~EOF
+    set_file_contents 'test.rs', <<~EOF
       struct TestStruct {
           foo: Bar,
       }
 
       enum TestEnum {
-        Foo,
-        Bar,
+          Foo,
+          Bar,
       }
 
       impl TestStruct {
-        fn test_fn_1() { }
+          fn test_fn_1() { }
 
-        pub fn test_fn_2(&self) { }
+          pub fn test_fn_2(&self) { }
       }
 
       impl TestEnum {
-        pub(crate) fn test_fn_1(&self) { }
+          pub(crate) fn test_fn_1(&self) { }
       }
 
       fn main() {
-        TestStruct::test_fn_1()
+          TestStruct::test_fn_1()
       }
     EOF
 
@@ -47,13 +47,13 @@ describe "Identifiers" do
   end
 
   specify "resolving a symbol based on namespace" do
-    set_file_contents <<~EOF
+    set_file_contents 'test.rs', <<~EOF
       mod ns1 {
-        struct TestType { foo: Bar }
+          struct TestType { foo: Bar }
       }
 
       mod ns2 {
-        enum TestType { foo: Bar }
+          enum TestType { foo: Bar }
       }
     EOF
 

@@ -13,8 +13,13 @@ function! rustbucket#Doc() abort
   endif
 
   let term_path = split(real_path, '::')
+  let [package, package_version] = identifier.Package()
 
-  let package   = term_path[0]
+  if package == term_path[0]
+    " We can safely remove it from the path
+    call remove(term_path, 0)
+  endif
+
   let term_name = term_path[-1]
   let path      = join(term_path[0:-2], '/')
 
@@ -24,7 +29,7 @@ function! rustbucket#Doc() abort
     echomsg "Local documentation not supported yet: ".term
     return
   else
-    let [_, package_version] = identifier.PackageWithVersion()
+    let [_, package_version] = identifier.PackageFromCargo()
     if package_version == ''
       let package_version = 'latest'
     endif
@@ -55,7 +60,7 @@ function! rustbucket#Info() abort
     let lines = [
           \ "Real path: " . identifier.RealPath(),
           \ "Type:      " . identifier.Type(),
-          \ "Package:   " . join(identifier.PackageWithVersion(), ' ')
+          \ "Package:   " . join(identifier.Package(), ' ')
           \ ]
   endif
 

@@ -1,6 +1,6 @@
 module Support
   module Vim
-    def set_file_contents(string)
+    def set_file_contents(filename, string)
       write_file(filename, string)
       vim.edit!(filename)
     end

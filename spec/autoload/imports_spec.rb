@@ -8,7 +8,7 @@ describe "Imports" do
   end
 
   specify "resolving a symbol" do
-    set_file_contents <<~EOF
+    set_file_contents 'test.rs', <<~EOF
       use std::io::Result;
       use std::fs::{self, File, read_to_string};
       use webkit2gtk::WebView as WV;
