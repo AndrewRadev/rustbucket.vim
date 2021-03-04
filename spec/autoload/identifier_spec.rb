@@ -1,8 +1,6 @@
 require 'spec_helper'
 
 describe "Identifiers" do
-  let(:filename) { 'test.rs' }
-
   def generate_tags
     system('ctags -R .')
   end
@@ -13,7 +11,7 @@ describe "Identifiers" do
   end
 
   specify "resolving a basic symbol using tags" do
-    set_file_contents 'test.rs', <<~EOF
+    edit_file 'test.rs', <<~EOF
       struct TestStruct {
           foo: Bar,
       }
@@ -47,7 +45,7 @@ describe "Identifiers" do
   end
 
   specify "resolving a symbol based on namespace" do
-    set_file_contents 'test.rs', <<~EOF
+    edit_file 'test.rs', <<~EOF
       mod ns1 {
           struct TestType { foo: Bar }
       }

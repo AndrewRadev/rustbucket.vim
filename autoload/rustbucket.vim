@@ -1,7 +1,37 @@
 " TODO (2021-02-12) import anyhow::anyhow, but then anyhow::Result?
-" TODO (2021-02-12) Separate Doc() and DocUrl() functions
 
 function! rustbucket#Doc() abort
+  let urls = rustbucket#DocUrls()
+  if empty(urls)
+    return
+  endif
+
+  let target_url = ''
+
+  if s:CheckUrl(urls.best_guess)
+    let target_url = urls.best_guess
+  else
+    for url in urls.fallbacks
+      if s:CheckUrl(url)
+        let target_url = url
+      endif
+    endfor
+  endif
+
+  if target_url != ''
+    echomsg "Opening: ".target_url
+    call rustbucket#util#Open(target_url)
+  else
+    echomsg "Couldn't find a valid doc URL from ".string(urls)
+  endif
+endfunction
+
+function! s:CheckUrl(url)
+  let status_code = trim(system('curl -I -s -o /dev/null -w "%{http_code}" '.shellescape(a:url)))
+  return status_code == '200'
+endfunction
+
+function! rustbucket#DocUrls() abort
   " TODO (2021-01-31) WebContext::get_default() -> func call, not namespace.
   " Read bracket?
 
@@ -9,7 +39,7 @@ function! rustbucket#Doc() abort
   let real_path = identifier.RealPath()
   if real_path == ''
     echomsg "Can't figure out the real path of: ".real_path
-    return
+    return ''
   endif
 
   let term_path = split(real_path, '::')
@@ -27,9 +57,9 @@ function! rustbucket#Doc() abort
     let base_url = 'https://doc.rust-lang.org/'.path
   elseif term_path[0] == 'crate'
     echomsg "Local documentation not supported yet: ".term
-    return
+    return ''
   else
-    let [_, package_version] = identifier.PackageFromCargo()
+    let [_, package_version] = identifier.Package()
     if package_version == ''
       let package_version = 'latest'
     endif
@@ -38,17 +68,24 @@ function! rustbucket#Doc() abort
   endif
 
   let type = identifier.Type()
+  let search_url = s:NormalizeUrl(base_url . '/' . package . '/?search=' . term_name)
 
   if type =~ '^\(macro\|struct\|enum\|fn\)$'
-    let url = base_url . '/' . type . '.' . term_name . '.html'
+    let best_url = s:NormalizeUrl(base_url . '/' . type . '.' . term_name . '.html')
+    let fallbacks = [search_url]
   else
-    let url = base_url . '/?search=' . term_name
+    let best_url = search_url
+    let fallbacks = []
   endif
 
-  let url = substitute(url, '//', '/', 'g')
+  return {
+        \ 'best_guess': best_url,
+        \ 'fallbacks': fallbacks
+        \ }
+endfunction
 
-  echomsg "Opening: ".url
-  call rustbucket#util#Open(url)
+function! s:NormalizeUrl(url)
+  return substitute(a:url, '//', '/', 'g')
 endfunction
 
 function! rustbucket#Info() abort
@@ -57,14 +94,24 @@ function! rustbucket#Info() abort
   if identifier.IsBlank()
     let lines = ["No info for identifier under cursor"]
   else
+    let doc_urls = rustbucket#DocUrls()
     let lines = [
           \ "Real path: " . identifier.RealPath(),
           \ "Type:      " . identifier.Type(),
-          \ "Package:   " . join(identifier.Package(), ' ')
+          \ "Package:   " . join(identifier.Package(), ' '),
+          \ "Doc URLs:"
           \ ]
-  endif
 
-  call popup_atcursor(lines, {'border': []})
+    call add(lines, " - Best Guess: " . doc_urls.best_guess)
+
+    let index = 1
+    for url in doc_urls.fallbacks
+      call add(lines, " - Fallback " . index . ": " . url)
+      let index += 1
+    endfor
+
+    call popup_atcursor(lines, {'border': []})
+  endif
 endfunction
 
 function! rustbucket#ParseImports()

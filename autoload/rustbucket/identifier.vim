@@ -52,7 +52,7 @@ function! rustbucket#identifier#AtCursor() abort
 
     let search_result = search('\V'.symbol, 'Wbc', line('.'))
     if search_result <= 0
-      return {}
+      return rustbucket#identifier#New({})
     endif
 
     let symbol_start_col    = col('.')
@@ -118,7 +118,7 @@ function! rustbucket#identifier#Type() dict abort
       let self.type = 'struct'
     elseif best_tag.kind == 'g'
       let self.type = 'enum'
-    elseif best_tag.kind == 'P'
+    elseif best_tag.kind == 'P' || best_tag.kind == 'f'
       let self.type = 'fn'
     endif
   endif
@@ -167,7 +167,7 @@ function! rustbucket#identifier#Tag() dict abort
   if empty(best_tag)
     " Try to find one with a known kind:
     for tag in good_tags
-      if tag.kind =~ '^[sgP]$'
+      if tag.kind =~ '^[sgPf]$'
         let best_tag = tag
         break
       endif
@@ -259,13 +259,13 @@ endfunction
 function! s:GetTagFileInfo(filename) abort
   let filename = a:filename
 
-  if a:filename !~ '\.cargo/registry/src/'
+  if filename !~ '\.cargo/registry/src/'
     return {}
   endif
 
   let package_with_version = matchstr(filename, '\.cargo/registry/src/[^/]\+/\zs[^/]\+\ze/')
-  let package_part = matchstr(package_with_version, '.*\ze-\d\.\d\.\d')
-  let version_part = matchstr(package_with_version, '.*-\zs\d\.\d\.\d')
+  let package_part = matchstr(package_with_version, '.*\ze-\d\+\.\d\+\.\d\+')
+  let version_part = matchstr(package_with_version, '.*-\zs\d\+\.\d\+\.\d\+')
 
   return { 'package': package_part, 'version': version_part }
 endfunction

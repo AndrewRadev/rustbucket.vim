@@ -1,14 +1,12 @@
 require 'spec_helper'
 
 describe "Imports" do
-  let(:filename) { 'test.rs' }
-
   def resolve_symbol(symbol)
     vim.command("echo b:imports.Resolve('#{symbol}')")
   end
 
   specify "resolving a symbol" do
-    set_file_contents 'test.rs', <<~EOF
+    edit_file 'test.rs', <<~EOF
       use std::io::Result;
       use std::fs::{self, File, read_to_string};
       use webkit2gtk::WebView as WV;
