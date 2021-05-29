@@ -13,6 +13,18 @@ So far, you can try:
 
 For better results, use [Universal ctags](https://ctags.io/) and generate them for local crates, too (with [`cargo local`](https://github.com/AndrewRadev/cargo-local#cargo-tags) for instance).
 
+For std info, install Rust std source code with rustup:
+
+```
+rustup component add rust-src
+```
+
+Generate tags for std:
+
+``` vim
+:RustbucketGenerateTags
+```
+
 But probably don't use it for now, I guess.
 
 ## Contributing

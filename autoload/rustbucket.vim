@@ -27,7 +27,8 @@ function! rustbucket#Doc() abort
 endfunction
 
 function! s:CheckUrl(url)
-  let status_code = trim(system('curl -I -s -o /dev/null -w "%{http_code}" '.shellescape(a:url)))
+  let curl_command = 'curl -I -s -o /dev/null -w "%{http_code}" '.shellescape(a:url)
+  let status_code = trim(system(curl_command))
   return status_code == '200'
 endfunction
 
@@ -54,24 +55,23 @@ function! rustbucket#DocUrls() abort
   let path      = join(term_path[0:-2], '/')
 
   if package == 'std'
-    let base_url = 'https://doc.rust-lang.org/'.path
+    let base_url = 'https://doc.rust-lang.org/'
   elseif term_path[0] == 'crate'
     echomsg "Local documentation not supported yet: ".term
     return ''
   else
-    let [_, package_version] = identifier.Package()
     if package_version == ''
       let package_version = 'latest'
     endif
 
-    let base_url = 'https://docs.rs/'.package.'/'.package_version.'/'.path
+    let base_url = 'https://docs.rs/'.package.'/'.package_version
   endif
 
   let type = identifier.Type()
   let search_url = s:NormalizeUrl(base_url . '/' . package . '/?search=' . term_name)
 
   if type =~ '^\(macro\|struct\|enum\|fn\)$'
-    let best_url = s:NormalizeUrl(base_url . '/' . type . '.' . term_name . '.html')
+    let best_url = s:NormalizeUrl(base_url.'/'.package.'/'.path.'/'.type.'.'. term_name.'.html')
     let fallbacks = [search_url]
   else
     let best_url = search_url
@@ -85,7 +85,7 @@ function! rustbucket#DocUrls() abort
 endfunction
 
 function! s:NormalizeUrl(url)
-  return substitute(a:url, '//', '/', 'g')
+  return substitute(a:url, '[^:]\zs//', '/', 'g')
 endfunction
 
 function! rustbucket#Info() abort
@@ -147,6 +147,27 @@ function! rustbucket#ParseImports()
   return [imported_symbols, aliases]
 endfunction
 
+function! rustbucket#GenerateTags()
+  let rust_sysroot = systemlist('rustc --print sysroot')
+
+  if v:shell_error
+    call s:EchoWarning("Couldn't execute `rustc --print sysroot`: ".rust_sysroot)
+    return
+  elseif empty(rust_sysroot)
+    call s:EchoWarning("Couldn't find rust source from `rustc --print sysroot`")
+  else
+    for package in ['std', 'alloc']
+      let src_location = fnamemodify(rust_sysroot[0] . '/lib/rustlib/src/rust/library/'.package.'/src', ':p')
+      let output = system('ctags -f '.shellescape(src_location.'/tags').' -R '.shellescape(src_location))
+
+      if v:shell_error
+        call s:EchoWarning("Couldn't execute ctags command: ".output)
+        return
+      endif
+    endfor
+  endif
+endfunction
+
 " TODO (2021-02-08) Write down version, link to source
 let s:std_prelude = {
       \ 'Copy':                'std::marker::Copy',
@@ -186,3 +207,9 @@ let s:std_prelude = {
       \ 'ToString':            'std::string::ToString',
       \ 'Vec':                 'std::vec::Vec',
       \ }
+
+function! s:EchoWarning(message)
+  echohl WarningMsg
+  exe 'echomsg "'.escape(a:message, '"\').'"'
+  echohl NONE
+endfunction

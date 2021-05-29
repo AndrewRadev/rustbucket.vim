@@ -1,3 +1,5 @@
+let s:rust_sysroot = []
+
 " Data includes:
 "
 " - symbol:    The specific identifier under the cursor
@@ -127,62 +129,78 @@ function! rustbucket#identifier#Type() dict abort
 endfunction
 
 function! rustbucket#identifier#Tag() dict abort
-  let best_tag = {}
-  let good_tags = []
-  let taglist = taglist('^'.self.symbol.'$')
+  let saved_tags = &l:tags
 
-  " First, look for a tag that matches by full path:
-  for tag in taglist
-    " Check if we have some namespacing info in the tag:
-    let tag_full_path = ''
-    if has_key(tag, 'module')
-      let tag_full_path = tag.module . '::' . tag.name
-    elseif has_key(tag, 'implementation')
-      let tag_full_path = tag.implementation . '::' . tag.name
+  try
+    " Try finding global rust tags
+    if empty(s:rust_sysroot)
+      let s:rust_sysroot = systemlist('rustc --print sysroot')
     endif
 
-    " Can we pull out any useful information out of the filename?
-    let file_info = s:GetTagFileInfo(get(tag, 'filename', ''))
-    if !empty(file_info)
-      let [package_name, package_version] = self.PackageFromCargo()
+    if !empty(s:rust_sysroot)
+      let &l:tags .= ',' . fnamemodify(s:rust_sysroot[0] . '/lib/rustlib/src/rust/library/std/src/tags', ':p')
+      let &l:tags .= ',' . fnamemodify(s:rust_sysroot[0] . '/lib/rustlib/src/rust/library/alloc/src/tags', ':p')
+    endif
 
-      if package_version != '' &&
-            \ (package_name != file_info.package || package_version != file_info.version)
-        " Then this is not the tag we're looking for
-        continue
+    let best_tag = {}
+    let good_tags = []
+    let taglist = taglist('^'.self.symbol.'$')
+
+    " First, look for a tag that matches by full path:
+    for tag in taglist
+      " Check if we have some namespacing info in the tag:
+      let tag_full_path = ''
+      if has_key(tag, 'module')
+        let tag_full_path = tag.module . '::' . tag.name
+      elseif has_key(tag, 'implementation')
+        let tag_full_path = tag.implementation . '::' . tag.name
       endif
-    endif
 
-    if self.full_path != '' && tag_full_path != '' && self.full_path =~ tag_full_path.'$'
-      " The identifier's full path ends with the tag's full path, this should
-      " be the best we can hope for:
-      let best_tag = tag
-      break
-    endif
+      " Can we pull out any useful information out of the filename?
+      let file_info = s:GetTagFileInfo(get(tag, 'filename', ''))
+      if !empty(file_info)
+        let [package_name, package_version] = self.PackageFromCargo()
 
-    " If we're here, it's good enough
-    call add(good_tags, tag)
-  endfor
+        if package_version != '' &&
+              \ (package_name != file_info.package || package_version != file_info.version)
+          " Then this is not the tag we're looking for
+          continue
+        endif
+      endif
 
-  if empty(best_tag)
-    " Try to find one with a known kind:
-    for tag in good_tags
-      if tag.kind =~ '^[sgPf]$'
+      if self.full_path != '' && tag_full_path != '' && self.full_path =~ tag_full_path.'$'
+        " The identifier's full path ends with the tag's full path, this should
+        " be the best we can hope for:
         let best_tag = tag
         break
       endif
+
+      " If we're here, it's good enough
+      call add(good_tags, tag)
     endfor
-  endif
 
-  if empty(best_tag)
-    let best_tag = get(good_tags, 0, {})
-  endif
+    if empty(best_tag)
+      " Try to find one with a known kind:
+      for tag in good_tags
+        if tag.kind =~ '^[sgPf]$'
+          let best_tag = tag
+          break
+        endif
+      endfor
+    endif
 
-  if !empty(best_tag)
-    let self.tag = best_tag
-  endif
+    if empty(best_tag)
+      let best_tag = get(good_tags, 0, {})
+    endif
 
-  return self.tag
+    if !empty(best_tag)
+      let self.tag = best_tag
+    endif
+
+    return self.tag
+  finally
+    let &l:tags = saved_tags
+  endtry
 endfunction
 
 function! rustbucket#identifier#Package() dict abort
@@ -191,7 +209,7 @@ function! rustbucket#identifier#Package() dict abort
   endif
 
   let [package, package_version] = self.PackageFromCargo()
-  if package_version == ''
+  if package != 'std' && package_version == ''
     let [package, package_version] = self.PackageFromTags()
   endif
 
