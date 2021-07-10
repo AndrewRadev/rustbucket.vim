@@ -11,3 +11,5 @@ nmap <buffer><silent> <C-W>f     :sfind   <Plug><cfile><CR>
 nmap <buffer><silent> <C-W><C-F> :sfind   <Plug><cfile><CR>
 nmap <buffer><silent> <C-W>gf    :tabfind <Plug><cfile><CR>
 cmap <buffer>         <C-R><C-F> <Plug><cfile>
+
+autocmd Syntax <buffer> call rustbucket#highlight#Imports()
