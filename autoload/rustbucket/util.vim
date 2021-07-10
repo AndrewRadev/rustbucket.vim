@@ -104,3 +104,63 @@ function! rustbucket#util#Open(url)
     return
   end
 endfunction
+
+" Cargo {{{1
+"
+" function rustbucket#util#ProjectName() {{{2
+"
+function rustbucket#util#ProjectName()
+  let cargo_toml = findfile('Cargo.toml', '.;')
+  if cargo_toml == ''
+    return ''
+  endif
+
+  let lines = readfile(cargo_toml)
+  if len(lines) == 0
+    return ''
+  endif
+
+  let index = 0
+  let project_name = ''
+
+  while index < len(lines) && lines[index] !~ '^\s*\[package\]'
+    let index += 1
+  endwhile
+
+  while index < len(lines) && lines[index] !~ '^\s*name\s*='
+    let index += 1
+  endwhile
+
+  if index >= len(lines)
+    return ''
+  else
+    return matchstr(lines[index], '^\s*name\s*=\s*[''"]\zs[[:keyword:]-]\+\ze[''"]')
+  endif
+endfunction
+
+" Searching callbacks after file navigation {{{1
+"
+" function rustbucket#util#SetFileOpenCallback(filename, ...) {{{2
+"
+function! rustbucket#util#SetFileOpenCallback(filename, ...)
+  let searches = a:000
+  let filename = fnamemodify(a:filename, ':p')
+
+  augroup rustbucket_file_open_callback
+    autocmd!
+
+    exe 'autocmd BufEnter '.filename.' normal! gg'
+    for pattern in searches
+      exe 'autocmd BufEnter '.filename.' call search("'.escape(pattern, '"\').'")'
+    endfor
+    exe 'autocmd BufEnter '.filename.' call rustbucket#util#ClearFileOpenCallback()'
+  augroup END
+endfunction
+
+" function rustbucket#util#ClearFileOpenCallback() {{{2
+"
+function! rustbucket#util#ClearFileOpenCallback()
+  augroup rustbucket_file_open_callback
+    autocmd!
+  augroup END
+endfunction
