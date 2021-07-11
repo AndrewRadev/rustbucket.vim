@@ -4,7 +4,11 @@
 
 A collection of Rust tools for Vim that doesn't use fancy LSP stuff, but aims to produce 90%-useful stuff quickly.
 
-So far, you can try:
+You should be able to use the `gf` family of mappings on local imports (highlighting updates on write), like so:
+
+![gf on imports](http://i.andrewradev.com/664ca4e2d0d797f3120064a30a1cb6ea.gif)
+
+You can also try:
 
 ``` vim
 :Info " Get a (Vim8) popup with detected info for the symbol under the cursor
