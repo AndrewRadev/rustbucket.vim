@@ -19,6 +19,11 @@ function! rustbucket#toml#Doc()
       let json_definition = substitute(string_definition, '\([[:keyword:]-]\+\)\s*=', '"\1": ', 'g')
       let definition = json_decode(json_definition)
 
+      if has_key(definition, 'package')
+        let package_name = definition.package
+        let url = 'https://crates.io/crates/' . package_name
+      endif
+
       if has_key(definition, 'git') && definition.git =~ '^https\=://'
         let url = definition.git
 
