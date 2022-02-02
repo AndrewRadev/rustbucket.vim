@@ -51,12 +51,12 @@ function! rustbucket#DocUrls() abort
     call remove(term_path, 0)
   endif
 
-  let term_name = term_path[-1]
+  let term_name = len(term_path) > 0 ? term_path[-1] : ''
   let path      = join(term_path[0:-2], '/')
 
   if package == 'std'
     let base_url = 'https://doc.rust-lang.org/'
-  elseif term_path[0] == 'crate'
+  elseif len(term_path) > 0 && term_path[0] == 'crate'
     echomsg "Local documentation not supported yet: ".term
     return ''
   else
@@ -65,6 +65,20 @@ function! rustbucket#DocUrls() abort
     endif
 
     let base_url = 'https://docs.rs/'.package.'/'.package_version
+  endif
+
+  if term_name == ''
+    if package == 'std'
+      return {
+            \ 'best_guess': base_url,
+            \ 'fallbacks': [],
+            \ }
+    else
+      return {
+            \ 'best_guess': base_url . '/' . package . '/',
+            \ 'fallbacks': [],
+            \ }
+    endif
   endif
 
   let type = identifier.Type()

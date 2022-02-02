@@ -329,6 +329,14 @@ function! rustbucket#util#SearchSkip(pattern, skip, ...)
   return match
 endfunction
 
+function! rustbucket#util#SkipSyntax(syntax_groups)
+  let syntax_groups = a:syntax_groups
+  let skip_pattern  = '\%('.join(syntax_groups, '\|').'\)'
+
+  return "synIDattr(synID(line('.'),col('.'),1),'name') =~ '".skip_pattern."'"
+endfunction
+
+
 " Checks if the given column is within the given limits.
 "
 function! rustbucket#util#ColBetween(col, start, end)

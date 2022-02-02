@@ -2,10 +2,10 @@ function! rustbucket#gf#Includeexpr(...)
   if a:0 > 0
     let filename = a:1
   else
-    let filename = expand('<cfile>')
+    let filename = expand('<cword>')
   endif
 
-  call b:imports.Parse()
+  " call b:imports.Parse()
   let path = split(b:imports.Resolve(filename), '::')
   if len(path) == 0
     return filename
@@ -34,8 +34,8 @@ function! rustbucket#gf#Includeexpr(...)
     return imported_filename
   endif
 
-  " We couldn't find anything, let's just return what was under the cursor
-  return filename
+  " We couldn't find anything, let's just return the filename under the cursor
+  return expand('<cfile>')
 endfunction
 
 function! s:AttachSearch(filename, searches)

@@ -24,10 +24,12 @@ function! rustbucket#highlight#Imports()
   let project_pattern = '^\(crate\|'.rustbucket#util#ProjectName().'\)::'
   let findable_imports = []
 
-  for [import, path] in items(b:imports.import_lookup)
-    if path =~ project_pattern
-      call add(findable_imports, import)
-    endif
+  for [import, entries] in items(b:imports.import_lookup)
+    for entry in entries
+      if entry.full_path =~ project_pattern
+        call add(findable_imports, import)
+      endif
+    endfor
   endfor
 
   if empty(findable_imports)
