@@ -83,7 +83,10 @@ function! rustbucket#imports#Parse() dict abort
     endif
 
     let range = [-1, -1]
-    if searchpair('{', '', '}', 'W', skip) > 0
+
+    " Note: Hacky, but we rely on indentation to decide if we should check for
+    " a surrounding block, otherwise it's too slow:
+    if line =~ '^\s' && searchpair('{', '', '}', 'W', skip) > 0
       let range[0] = line('.')
       let range[1] = searchpair('{', '', '}', 'W', skip)
     endif
