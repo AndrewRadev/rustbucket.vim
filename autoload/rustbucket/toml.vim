@@ -11,17 +11,17 @@ function! rustbucket#toml#Doc()
       return
     endif
 
-    let url = 'https://crates.io/crates/'.package_name
+    let url = 'https://docs.rs/' . package_name . '/'
 
-    " Is there an explicit definition we can get a url out of?
     if search('=\s*\zs{', 'W', line('.'))
+      " There's a json-like definition we can get a url out of
       let string_definition = rustbucket#util#GetMotion('va{')
       let json_definition = substitute(string_definition, '\([[:keyword:]-]\+\)\s*=', '"\1": ', 'g')
       let definition = json_decode(json_definition)
 
       if has_key(definition, 'package')
         let package_name = definition.package
-        let url = 'https://crates.io/crates/' . package_name
+        let url = 'https://docs.rs/' . package_name
       endif
 
       if has_key(definition, 'git') && definition.git =~ '^https\=://'
@@ -37,6 +37,13 @@ function! rustbucket#toml#Doc()
       elseif has_key(definition, 'version')
         let url .= '/' . definition.version
       endif
+    elseif search('=\s*"\zs\d\+\.', 'W', line('.'))
+      " There's a version string
+      let version_string = rustbucket#util#GetMotion('vi"')
+      let url .= version_string . '/'
+    else
+      " fall back to the latest version
+      let url .= version_string . '/latest'
     endif
 
     echomsg "Opening: ".url
