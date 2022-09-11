@@ -21,7 +21,7 @@ function! rustbucket#highlight#Imports()
   call prop_remove({'type': 'rustbucket_import', 'all': v:true})
 
   call b:imports.Parse()
-  let project_pattern = '^\(crate\|'.rustbucket#util#ProjectName().'\)::'
+  let project_pattern = '^\(crate\|'.rustbucket#util#UnderscoredProjectName().'\)::'
   let findable_imports = []
 
   for [import, entries] in items(b:imports.import_lookup)

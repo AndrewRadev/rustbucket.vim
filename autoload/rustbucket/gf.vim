@@ -12,7 +12,7 @@ function! rustbucket#gf#Includeexpr(...)
   endif
 
   let package = remove(path, 0)
-  if package != 'crate' && package != rustbucket#util#ProjectName()
+  if package != 'crate' && package != rustbucket#util#UnderscoredProjectName()
     return filename
   endif
 

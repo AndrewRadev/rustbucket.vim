@@ -140,6 +140,13 @@ function rustbucket#util#ProjectName()
   endif
 endfunction
 
+"
+" function rustbucket#util#UnderscoredProjectName() {{{2
+"
+function rustbucket#util#UnderscoredProjectName()
+  return substitute(rustbucket#util#ProjectName(), '-', '_', 'g')
+endfunction
+
 " Searching callbacks after file navigation {{{1
 "
 " function rustbucket#util#SetFileOpenCallback(filename, ...) {{{2
