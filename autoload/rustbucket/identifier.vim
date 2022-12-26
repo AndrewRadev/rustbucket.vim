@@ -235,13 +235,7 @@ function! rustbucket#identifier#PackageFromCargo() dict abort
     return ['crate', '']
   endif
 
-  let self.package_version = s:FindPackageVersion(self.package)
-  if self.package_version == ''
-    " We haven't found a good package then, let's leave it to tags
-    let self.package = ''
-  endif
-
-  return [self.package, self.package_version]
+  return s:FindPackageWithVersion(self.package)
 endfunction
 
 function! rustbucket#identifier#PackageFromTags() dict abort
@@ -249,15 +243,23 @@ function! rustbucket#identifier#PackageFromTags() dict abort
   return [get(file_info, 'package', ''), get(file_info, 'version', '')]
 endfunction
 
-function! s:FindPackageVersion(package)
+function! s:FindPackageWithVersion(package)
+  let package = a:package
+
   let lockfile = findfile('Cargo.lock', '.;')
   if lockfile == ''
-    return ''
+    return ['', '']
   endif
 
-  let package_data = systemlist("grep -A1 'name = \"".a:package."\"' ".lockfile)
+  let package_data = systemlist("grep -A1 'name = \"".package."\"' ".lockfile)
+
   if len(package_data) == 0
-    return ''
+    let package = substitute(package, '_', '-', 'g')
+    let package_data = systemlist("grep -A1 'name = \"".package."\"' ".lockfile)
+  endif
+
+  if len(package_data) == 0
+    return ['', '']
   endif
 
   let version_breakdowns = []
@@ -270,7 +272,7 @@ function! s:FindPackageVersion(package)
 
   call sort(version_breakdowns)
 
-  return join(version_breakdowns[0], '.')
+  return [package, join(version_breakdowns[0], '.')]
 endfunction
 
 " TODO (2021-03-02) Handle "1.2.3-beta.2" and such

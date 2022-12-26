@@ -27,7 +27,8 @@ function! rustbucket#Doc() abort
 endfunction
 
 function! s:CheckUrl(url)
-  let curl_command = 'curl -I -s -o /dev/null -w "%{http_code}" '.shellescape(a:url)
+  " Note: Might add -L to follow redirects, but ideally should be correct URL
+  let curl_command = 'curl -Is -o /dev/null -w "%{http_code}" '.shellescape(a:url)
   let status_code = trim(system(curl_command))
   return status_code == '200'
 endfunction
@@ -46,13 +47,13 @@ function! rustbucket#DocUrls() abort
   let term_path = split(real_path, '::')
   let [package, package_version] = identifier.Package()
 
-  if package == term_path[0]
+  if package == term_path[0] || package == substitute(term_path[0], '_', '-', 'g')
     " We can safely remove it from the path
+    let term_name = term_path[-1]
     call remove(term_path, 0)
   endif
 
-  let term_name = len(term_path) > 0 ? term_path[-1] : ''
-  let path      = join(term_path[0:-2], '/')
+  let path = join(term_path[0:-2], '/')
 
   if package == 'std'
     let base_url = 'https://doc.rust-lang.org/'
@@ -75,10 +76,16 @@ function! rustbucket#DocUrls() abort
             \ }
     else
       return {
-            \ 'best_guess': base_url . '/' . package . '/',
+            \ 'best_guess': base_url . '/' . term_name . '/',
             \ 'fallbacks': [],
             \ }
     endif
+  elseif len(term_path) == 0
+    " it's just the package/crate name
+    return {
+          \ 'best_guess': base_url . '/' . term_name . '/',
+          \ 'fallbacks': [],
+          \ }
   endif
 
   let type = identifier.Type()
