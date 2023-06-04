@@ -11,7 +11,7 @@ function! rustbucket#toml#Doc()
       return
     endif
 
-    let url = 'https://docs.rs/' . package_name . '/'
+    let url = 'https://docs.rs/' . package_name
 
     if search('=\s*\zs{', 'W', line('.'))
       " There's a json-like definition we can get a url out of
@@ -40,10 +40,10 @@ function! rustbucket#toml#Doc()
     elseif search('=\s*"\zs\d\+\.', 'W', line('.'))
       " There's a version string
       let version_string = rustbucket#util#GetMotion('vi"')
-      let url .= version_string . '/'
+      let url .= '/'. version_string
     else
       " fall back to the latest version
-      let url .= version_string . '/latest'
+      let url .= '/' . version_string . '/latest'
     endif
 
     echomsg "Opening: ".url
