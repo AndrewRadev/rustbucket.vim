@@ -46,10 +46,10 @@ function! rustbucket#DocUrls() abort
 
   let term_path = split(real_path, '::')
   let [package, package_version] = identifier.Package()
+  let term_name = term_path[-1]
 
   if package == term_path[0] || package == substitute(term_path[0], '_', '-', 'g')
     " We can safely remove it from the path
-    let term_name = term_path[-1]
     call remove(term_path, 0)
   endif
 
